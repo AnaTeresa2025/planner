@@ -5,6 +5,11 @@ const PORT = 3000;
 
 app.set("json spaces", 2);
 
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = require("./swagger-output.json");
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 // Nesta versão, as tarefas estão salvas em memória volátil. 
 const tasks = new Map([
   [1, { id: 1, title: "Revisar o artigo ACM Survey", completed: false, data: "15/10/2026" }],
