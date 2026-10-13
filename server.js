@@ -1,3 +1,4 @@
+// Configurações do servidor HTTP (usando o framework Express.js)
 const express = require("express");
 
 const app = express();
@@ -11,7 +12,7 @@ const swaggerDocument = require("./swagger-output.json");
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Nesta versão, as tarefas estão salvas em memória volátil. 
+// Banco de dados de tarefas. Nesta versão, as tarefas estão salvas em memória volátil. 
 const tasks = new Map([
   [1, {
     id: 1,
@@ -55,6 +56,26 @@ app.get("/tasks/:id", (req, res) => {
   }
 
   res.json(task);
+});
+
+app.post("/tasks", (req, res) => {
+  const { title, date } = req.body;
+
+  if (!title || !date) {
+    return res.status(400).json({ error: "Title and date are required" });
+  }
+
+  const newId = tasks.size + 1;  //TODO: Melhorar a geração de IDs para evitar colisões em um cenário real.
+  const newTask = {
+    id: newId,
+    title,
+    completed: false,
+    date,
+    completionDate: null
+  };
+  
+  tasks.set(newId, newTask);
+  res.status(201).json(newTask);
 });
 
 // Start the server

@@ -26,7 +26,7 @@ test("GET /tasks/:id returns 404 for non-existent task", async () => {
   assert.deepEqual(response.body, { error: "Task not found" });
 });
 
-test("POST /tasks creates a new task", {skip: true}, async () => {
+test("POST /tasks creates a new task", async () => {
   const newTask = {
     title: "Elaborar os projetos de desenvolvimento da turma.",
     date: "14/10/2026"
