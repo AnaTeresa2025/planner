@@ -39,11 +39,21 @@ const tasks = new Map([
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
-  const allTasks = [];
-  for (const task of tasks.values()) {
-    allTasks.push(task);
+  const { status } = req.query;
+  let filteredTasks = [...tasks.values()];
+
+  if (status !== undefined) {
+    if (status !== "pendente" && status !== "concluida") {
+      return res.status(400).json({
+        error: "Invalid status. Use 'pendente' or 'concluida'"
+      });
+    }
+
+    const completed = status === "concluida";
+    filteredTasks = filteredTasks.filter(task => task.completed === completed);
   }
-  res.json(allTasks);
+
+  res.json(filteredTasks);
 });
 
 // GET /tasks/:id - "endpoint" que recupera uma tarefa específica pelo ID.
