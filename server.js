@@ -41,13 +41,26 @@ app.locals.tasks = tasks;
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
-  const searchTerm = typeof req.query.title === "string"
-    ? req.query.title.toLowerCase()
-    : null;
-  const matchingTasks = [...tasks.values()].filter((task) =>
-    searchTerm === null || task.title.toLowerCase().includes(searchTerm)
-  );
-  res.json(matchingTasks);
+  const { status, title } = req.query;
+  let filteredTasks = [...tasks.values()];
+
+  if (status !== undefined) {
+    if (status !== "pendente" && status !== "concluida") {
+      return res.status(400).json({
+        error: "Invalid status. Use 'pendente' or 'concluida'"
+      });
+    }
+
+    const completed = status === "concluida";
+    filteredTasks = filteredTasks.filter(task => task.completed === completed);
+  }
+
+  if (typeof title === "string") {
+    const searchTerm = title.toLowerCase();
+    filteredTasks = filteredTasks.filter(task => task.title.toLowerCase().includes(searchTerm));
+  }
+
+  res.json(filteredTasks);
 });
 
 // GET /tasks/summary - retorna uma contagem atual das tarefas.

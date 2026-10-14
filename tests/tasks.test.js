@@ -81,6 +81,64 @@ test("GET /tasks returns an empty list when no title matches", async () => {
   assert.deepEqual(response.body, []);
 });
 
+test("GET /tasks?status=pendente returns only pending tasks", async () => {
+  const pendingTask = await createTask("Tarefa pendente para filtro");
+  const completedTask = await createTask("Tarefa concluída para filtro");
+  markTaskCompleted(completedTask);
+
+  const response = await request(app).get("/tasks?status=pendente");
+
+  assert.equal(response.status, 200);
+  assert.ok(response.body.some(({ id }) => id === pendingTask.id));
+  assert.ok(!response.body.some(({ id }) => id === completedTask.id));
+  assert.ok(response.body.every(task => task.completed === false));
+});
+
+test("GET /tasks?status=concluida returns only completed tasks", async () => {
+  const pendingTask = await createTask("Tarefa pendente para filtro de concluídas");
+  const completedTask = await createTask("Tarefa concluída para filtro de concluídas");
+  markTaskCompleted(completedTask);
+
+  const response = await request(app).get("/tasks?status=concluida");
+
+  assert.equal(response.status, 200);
+  assert.ok(response.body.some(({ id }) => id === completedTask.id));
+  assert.ok(!response.body.some(({ id }) => id === pendingTask.id));
+  assert.ok(response.body.every(task => task.completed === true));
+});
+
+test("GET /tasks returns tasks in every status when no status is provided", async () => {
+  const pendingTask = await createTask("Tarefa pendente sem filtro");
+  const completedTask = await createTask("Tarefa concluída sem filtro");
+  markTaskCompleted(completedTask);
+
+  const response = await request(app).get("/tasks");
+
+  assert.equal(response.status, 200);
+  assert.ok(response.body.some(({ id }) => id === pendingTask.id));
+  assert.ok(response.body.some(({ id }) => id === completedTask.id));
+});
+
+test("GET /tasks returns 400 for an unsupported status", async () => {
+  const response = await request(app).get("/tasks?status=em-andamento");
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    error: "Invalid status. Use 'pendente' or 'concluida'"
+  });
+});
+
+test("GET /tasks combines status and title filters", async () => {
+  await createTask("Relatório CombinedFilterProbe pendente");
+  const completedTask = await createTask("Relatório CombinedFilterProbe concluído");
+  markTaskCompleted(completedTask);
+
+  const response = await request(app).get("/tasks?status=concluida&title=combinedfilterprobe");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.map(({ id }) => id), [completedTask.id]);
+});
+
 test("POST /tasks creates a new task", async () => {
   const newTask = {
     title: "Elaborar os projetos de desenvolvimento da turma.",
