@@ -12,37 +12,12 @@ const swaggerDocument = require("./swagger-output.json");
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Banco de dados de tarefas. Nesta versão, as tarefas estão salvas em memória volátil. 
-const tasks = new Map([
-  [1, {
-    id: 1,
-    title: "Revisar o artigo ACM Survey",
-    completed: false,
-    date: "15/10/2026",
-    completionDate: null
-  }],
-  [2, {
-    id: 2,
-    title: "Preparar material para o curso TDS",
-    completed: true,
-    date: "12/10/2026",
-    completionDate: "10/10/2026"
-  }],
-  [3, {
-    id: 3,
-    title: "Preparar apresentação da palestra BBDW",
-    completed: false,
-    date: "15/10/2026",
-    completionDate: null
-  }]
-]);
-let nextTaskId = Math.max(...tasks.keys()) + 1;
-app.locals.tasks = tasks;
+const db = require("./db");
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
   const { status, title } = req.query;
-  let filteredTasks = [...tasks.values()];
+  let filteredTasks = db.listaTarefas();
 
   if (status !== undefined) {
     if (status !== "pendente" && status !== "concluida") {
@@ -65,24 +40,19 @@ app.get("/tasks", (req, res) => {
 
 // GET /tasks/summary - retorna uma contagem atual das tarefas.
 app.get("/tasks/summary", (req, res) => {
-  let completedTasks = 0;
-  for (const task of tasks.values()) {
-    if (task.completed) {
-      completedTasks += 1;
-    }
-  }
+  const allTasks = db.listaTarefas();
+  const completedTasks = allTasks.filter(task => task.completed).length;
 
   res.json({
-    totalTasks: tasks.size,
-    pendingTasks: tasks.size - completedTasks,
+    totalTasks: allTasks.length,
+    pendingTasks: allTasks.length - completedTasks,
     completedTasks
   });
 });
 
 // GET /tasks/:id - "endpoint" que recupera uma tarefa específica pelo ID.
 app.get("/tasks/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const task = tasks.get(id);
+  const task = db.consultaPorId(Number(req.params.id));
 
   if (!task) {
     return res.status(404).json({ error: "Task not found" });
@@ -94,9 +64,8 @@ app.get("/tasks/:id", (req, res) => {
 // PATCH /tasks/:id - "endpoint" que altera o título de uma tarefa.
 app.patch("/tasks/:id", (req, res) => {
   const id = Number(req.params.id);
-  const task = tasks.get(id);
 
-  if (!task) {
+  if (!db.consultaPorId(id)) {
     return res.status(404).json({ error: "Task not found" });
   }
 
@@ -105,13 +74,13 @@ app.patch("/tasks/:id", (req, res) => {
     return res.status(400).json({ error: "Title is required" });
   }
 
-  task.title = title;
-  res.json(task);
+  res.json(db.atualizaTarefa(id, { title }));
 });
 
+// DELETE /tasks/:id - "endpoint" que remove uma tarefa pendente.
 app.delete("/tasks/:id", (req, res) => {
   const id = Number(req.params.id);
-  const task = tasks.get(id);
+  const task = db.consultaPorId(id);
 
   if (!task) {
     return res.status(404).json({ error: "Task not found" });
@@ -121,23 +90,22 @@ app.delete("/tasks/:id", (req, res) => {
     return res.status(400).json({ error: "Cannot delete a completed task" });
   }
 
-  tasks.delete(id);
+  db.removeTarefa(id);
   res.status(200).end();
 });
 
+// PATCH /tasks/:id/reopen - "endpoint" que reabre uma tarefa concluída.
 app.patch("/tasks/:id/reopen", (req, res) => {
   const id = Number(req.params.id);
-  const task = tasks.get(id);
 
-  if (!task) {
+  if (!db.consultaPorId(id)) {
     return res.status(404).json({ error: "Task not found" });
   }
 
-  task.completed = false;
-  task.completionDate = null;
-  res.json(task);
+  res.json(db.atualizaTarefa(id, { completed: false, completionDate: null }));
 });
 
+// POST /tasks - "endpoint" que cadastra uma nova tarefa.
 app.post("/tasks", (req, res) => {
   const { title, date } = req.body;
 
@@ -145,17 +113,7 @@ app.post("/tasks", (req, res) => {
     return res.status(400).json({ error: "Title and date are required" });
   }
 
-  const newId = nextTaskId++;
-  const newTask = {
-    id: newId,
-    title,
-    completed: false,
-    date,
-    completionDate: null
-  };
-  
-  tasks.set(newId, newTask);
-  res.status(201).json(newTask);
+  res.status(201).json(db.cadastraTarefa({ title, date }));
 });
 
 // Start the server

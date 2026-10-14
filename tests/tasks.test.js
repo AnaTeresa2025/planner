@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const request = require("supertest");
 
 const app = require("../server");
+const db = require("../db");
 
 const NON_EXISTENT_ID = Number.MAX_SAFE_INTEGER;
 
@@ -16,10 +17,10 @@ async function createTask(title = "Tarefa de teste") {
   return response.body;
 }
 
+// Enquanto não existe uma rota para concluir tarefas (issues #2 e #11),
+// os testes marcam a tarefa como concluída diretamente no banco de dados.
 function markTaskCompleted(task) {
-  const storedTask = app.locals.tasks.get(task.id);
-  storedTask.completed = true;
-  storedTask.completionDate = "13/10/2026";
+  db.atualizaTarefa(task.id, { completed: true, completionDate: "13/10/2026" });
 }
 
 test("GET /tasks returns all tasks", async () => {
