@@ -208,3 +208,47 @@ test("PATCH /tasks/:id/reopen returns 404 for a non-existent task", async () => 
   assert.equal(response.status, 404);
   assert.deepEqual(response.body, { error: "Task not found" });
 });
+
+test("PATCH /tasks/:id updates a task title", async () => {
+  const task = await createTask("Revisar o artigo");
+  const response = await request(app)
+    .patch(`/tasks/${task.id}`)
+    .send({ title: "Revisar o artigo atualizado" });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { ...task, title: "Revisar o artigo atualizado" });
+
+  const updatedTask = await request(app).get(`/tasks/${task.id}`);
+  assert.equal(updatedTask.body.title, "Revisar o artigo atualizado");
+});
+
+test("PATCH /tasks/:id returns 400 for a missing or blank title", async () => {
+  const task = await createTask("Título que não deve mudar");
+
+  for (const body of [{}, { title: "" }, { title: "   " }, { title: 42 }]) {
+    const response = await request(app).patch(`/tasks/${task.id}`).send(body);
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, { error: "Title is required" });
+  }
+
+  const unchangedTask = await request(app).get(`/tasks/${task.id}`);
+  assert.equal(unchangedTask.body.title, "Título que não deve mudar");
+});
+
+test("PATCH /tasks/:id returns 400 when no body is sent", async () => {
+  const task = await createTask();
+  const response = await request(app).patch(`/tasks/${task.id}`);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, { error: "Title is required" });
+});
+
+test("PATCH /tasks/:id returns 404 for non-existent task", async () => {
+  const response = await request(app)
+    .patch(`/tasks/${NON_EXISTENT_ID}`)
+    .send({ title: "Título atualizado" });
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, { error: "Task not found" });
+});

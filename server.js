@@ -91,6 +91,24 @@ app.get("/tasks/:id", (req, res) => {
   res.json(task);
 });
 
+// PATCH /tasks/:id - "endpoint" que altera o título de uma tarefa.
+app.patch("/tasks/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+
+  if (!task) {
+    return res.status(404).json({ error: "Task not found" });
+  }
+
+  const { title } = req.body ?? {};
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "Title is required" });
+  }
+
+  task.title = title;
+  res.json(task);
+});
+
 app.delete("/tasks/:id", (req, res) => {
   const id = Number(req.params.id);
   const task = tasks.get(id);
