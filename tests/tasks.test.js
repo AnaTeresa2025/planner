@@ -4,33 +4,32 @@ const request = require("supertest");
 
 const app = require("../server");
 
-test("GET /tasks returns all tasks", async () => {
-  const created = await request(app).post("/tasks").send({
-    title: "Tarefa para listar",
+async function createTask(title) {
+  return request(app).post("/tasks").send({
+    title,
     date: "14/10/2026"
   });
+}
+
+test("GET /tasks returns all tasks", async () => {
+  const createdTask = await createTask("Verify task listing includes created task");
   const response = await request(app).get("/tasks");
 
-  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
-  assert.ok(response.body.some((task) => task.id === created.body.id));
+  assert.ok(response.body.some((task) => task.id === createdTask.body.id));
 });
 
 test("GET /tasks/:id returns a specific task", async () => {
-  const created = await request(app).post("/tasks").send({
-    title: "Tarefa para consultar",
-    date: "14/10/2026"
-  });
-  const response = await request(app).get(`/tasks/${created.body.id}`);
+  const createdTask = await createTask("Fetch task created by this test");
+  const response = await request(app).get(`/tasks/${createdTask.body.id}`);
 
-  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
-  assert.equal(response.body.id, created.body.id);
-  assert.equal(response.body.title, "Tarefa para consultar");
+  assert.equal(response.body.id, createdTask.body.id);
+  assert.equal(response.body.title, "Fetch task created by this test");
 });
 
 test("GET /tasks/:id returns 404 for non-existent task", async () => {
-  const response = await request(app).get("/tasks/999");
+  const response = await request(app).get("/tasks/9007199254740991");
 
   assert.equal(response.status, 404);
   assert.deepEqual(response.body, { error: "Task not found" });
@@ -38,10 +37,7 @@ test("GET /tasks/:id returns 404 for non-existent task", async () => {
 
 test("GET /tasks/summary returns live task counts", async () => {
   const before = await request(app).get("/tasks/summary");
-  const created = await request(app).post("/tasks").send({
-    title: "Tarefa pendente para o resumo",
-    date: "14/10/2026"
-  });
+  const created = await createTask("Tarefa pendente para o resumo");
   const after = await request(app).get("/tasks/summary");
 
   assert.equal(before.status, 200);
@@ -63,6 +59,21 @@ test("GET /tasks/summary returns live task counts", async () => {
   assert.equal(after.body.completedTasks, before.body.completedTasks);
 });
 
+test("GET /tasks filters titles without case sensitivity", async () => {
+  const createdTask = await createTask("Prepare the MixedCaseSearchProbe report");
+  const response = await request(app).get("/tasks?title=mIXeDcAsEsEaRcHpRoBe");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.map((task) => task.id), [createdTask.body.id]);
+});
+
+test("GET /tasks returns an empty list when no title matches", async () => {
+  const response = await request(app).get("/tasks?title=NoTaskHasThisUniqueTitleTerm");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, []);
+});
+
 test("POST /tasks creates a new task", async () => {
   const newTask = {
     title: "Elaborar os projetos de desenvolvimento da turma.",
@@ -79,33 +90,32 @@ test("POST /tasks creates a new task", async () => {
 });  
 
 test("DELETE /tasks/:id removes an existing task", async () => {
-  const created = await request(app).post("/tasks").send({
-    title: "Tarefa para excluir",
-    date: "14/10/2026"
-  });
-  const response = await request(app).delete(`/tasks/${created.body.id}`);
+  const createdTask = await createTask("Delete task created by this test");
+  const response = await request(app).delete(`/tasks/${createdTask.body.id}`);
 
-  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
 
-  const deletedTask = await request(app).get(`/tasks/${created.body.id}`);
+  const deletedTask = await request(app).get(`/tasks/${createdTask.body.id}`);
   assert.equal(deletedTask.status, 404);
   assert.deepEqual(deletedTask.body, { error: "Task not found" });
 });
 
 test("DELETE /tasks/:id does not remove a completed task", async () => {
-  const response = await request(app).delete("/tasks/2");
+  const completedTask = (await request(app).get("/tasks")).body.find((task) => task.completed);
+  assert.ok(completedTask);
+
+  const response = await request(app).delete(`/tasks/${completedTask.id}`);
 
   assert.equal(response.status, 400);
   assert.deepEqual(response.body, { error: "Cannot delete a completed task" });
 
-  const completedTask = await request(app).get("/tasks/2");
-  assert.equal(completedTask.status, 200);
-  assert.equal(completedTask.body.completed, true);
+  const retainedTask = await request(app).get(`/tasks/${completedTask.id}`);
+  assert.equal(retainedTask.status, 200);
+  assert.equal(retainedTask.body.completed, true);
 });
 
 test("DELETE /tasks/:id returns 404 for a non-existent task", async () => {
-  const response = await request(app).delete("/tasks/0");
+  const response = await request(app).delete("/tasks/9007199254740991");
 
   assert.equal(response.status, 404);
   assert.deepEqual(response.body, { error: "Task not found" });

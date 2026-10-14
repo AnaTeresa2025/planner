@@ -40,11 +40,13 @@ let nextTaskId = Math.max(...tasks.keys()) + 1;
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
-  const allTasks = [];
-  for (const task of tasks.values()) {
-    allTasks.push(task);
-  }
-  res.json(allTasks);
+  const searchTerm = typeof req.query.title === "string"
+    ? req.query.title.toLowerCase()
+    : null;
+  const matchingTasks = [...tasks.values()].filter((task) =>
+    searchTerm === null || task.title.toLowerCase().includes(searchTerm)
+  );
+  res.json(matchingTasks);
 });
 
 // GET /tasks/summary - retorna uma contagem atual das tarefas.
