@@ -5,18 +5,28 @@ const request = require("supertest");
 const app = require("../server");
 
 test("GET /tasks returns all tasks", async () => {
+  const created = await request(app).post("/tasks").send({
+    title: "Tarefa para listar",
+    date: "14/10/2026"
+  });
   const response = await request(app).get("/tasks");
 
+  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
-  assert.equal(response.body.length, 3);
+  assert.ok(response.body.some((task) => task.id === created.body.id));
 });
 
 test("GET /tasks/:id returns a specific task", async () => {
-  const response = await request(app).get("/tasks/1");
+  const created = await request(app).post("/tasks").send({
+    title: "Tarefa para consultar",
+    date: "14/10/2026"
+  });
+  const response = await request(app).get(`/tasks/${created.body.id}`);
 
+  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
-  assert.equal(response.body.id, 1);
-  assert.equal(response.body.title, "Revisar o artigo ACM Survey");
+  assert.equal(response.body.id, created.body.id);
+  assert.equal(response.body.title, "Tarefa para consultar");
 });
 
 test("GET /tasks/:id returns 404 for non-existent task", async () => {
@@ -24,6 +34,33 @@ test("GET /tasks/:id returns 404 for non-existent task", async () => {
 
   assert.equal(response.status, 404);
   assert.deepEqual(response.body, { error: "Task not found" });
+});
+
+test("GET /tasks/summary returns live task counts", async () => {
+  const before = await request(app).get("/tasks/summary");
+  const created = await request(app).post("/tasks").send({
+    title: "Tarefa pendente para o resumo",
+    date: "14/10/2026"
+  });
+  const after = await request(app).get("/tasks/summary");
+
+  assert.equal(before.status, 200);
+  assert.deepEqual(Object.keys(before.body).sort(), [
+    "completedTasks",
+    "pendingTasks",
+    "totalTasks"
+  ]);
+  for (const count of Object.values(before.body)) {
+    assert.equal(Number.isInteger(count), true);
+  }
+  assert.equal(created.status, 201);
+  assert.equal(after.status, 200);
+  for (const count of Object.values(after.body)) {
+    assert.equal(Number.isInteger(count), true);
+  }
+  assert.equal(after.body.totalTasks, before.body.totalTasks + 1);
+  assert.equal(after.body.pendingTasks, before.body.pendingTasks + 1);
+  assert.equal(after.body.completedTasks, before.body.completedTasks);
 });
 
 test("POST /tasks creates a new task", async () => {
@@ -42,11 +79,16 @@ test("POST /tasks creates a new task", async () => {
 });  
 
 test("DELETE /tasks/:id removes an existing task", async () => {
-  const response = await request(app).delete("/tasks/1");
+  const created = await request(app).post("/tasks").send({
+    title: "Tarefa para excluir",
+    date: "14/10/2026"
+  });
+  const response = await request(app).delete(`/tasks/${created.body.id}`);
 
+  assert.equal(created.status, 201);
   assert.equal(response.status, 200);
 
-  const deletedTask = await request(app).get("/tasks/1");
+  const deletedTask = await request(app).get(`/tasks/${created.body.id}`);
   assert.equal(deletedTask.status, 404);
   assert.deepEqual(deletedTask.body, { error: "Task not found" });
 });
@@ -63,7 +105,7 @@ test("DELETE /tasks/:id does not remove a completed task", async () => {
 });
 
 test("DELETE /tasks/:id returns 404 for a non-existent task", async () => {
-  const response = await request(app).delete("/tasks/999");
+  const response = await request(app).delete("/tasks/0");
 
   assert.equal(response.status, 404);
   assert.deepEqual(response.body, { error: "Task not found" });

@@ -36,6 +36,7 @@ const tasks = new Map([
     completionDate: null
   }]
 ]);
+let nextTaskId = Math.max(...tasks.keys()) + 1;
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
@@ -44,6 +45,22 @@ app.get("/tasks", (req, res) => {
     allTasks.push(task);
   }
   res.json(allTasks);
+});
+
+// GET /tasks/summary - retorna uma contagem atual das tarefas.
+app.get("/tasks/summary", (req, res) => {
+  let completedTasks = 0;
+  for (const task of tasks.values()) {
+    if (task.completed) {
+      completedTasks += 1;
+    }
+  }
+
+  res.json({
+    totalTasks: tasks.size,
+    pendingTasks: tasks.size - completedTasks,
+    completedTasks
+  });
 });
 
 // GET /tasks/:id - "endpoint" que recupera uma tarefa específica pelo ID.
@@ -81,7 +98,7 @@ app.post("/tasks", (req, res) => {
     return res.status(400).json({ error: "Title and date are required" });
   }
 
-  const newId = tasks.size + 1;  //TODO: Melhorar a geração de IDs para evitar colisões em um cenário real.
+  const newId = nextTaskId++;
   const newTask = {
     id: newId,
     title,
