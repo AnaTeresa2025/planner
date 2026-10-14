@@ -58,6 +58,24 @@ app.get("/tasks/:id", (req, res) => {
   res.json(task);
 });
 
+app.patch("/tasks/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+
+  if (!task) {
+    return res.status(404).json({ error: "Task not found" });
+  }
+
+  const { title } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: "Title is required" });
+  }
+
+  const updatedTask = { ...task, title };
+  tasks.set(id, updatedTask);
+  res.json(updatedTask);
+});
+
 app.post("/tasks", (req, res) => {
   const { title, date } = req.body;
 

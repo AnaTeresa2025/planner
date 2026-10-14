@@ -39,4 +39,33 @@ test("POST /tasks creates a new task", async () => {
   assert.equal(response.body.completed, false);
   assert.equal(response.body.date, newTask.date);
   assert.equal(response.body.completionDate, null);
-});  
+});
+
+test("PATCH /tasks/:id updates a task title", async () => {
+  const response = await request(app)
+    .patch("/tasks/1")
+    .send({ title: "Revisar o artigo atualizado" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.id, 1);
+  assert.equal(response.body.title, "Revisar o artigo atualizado");
+  assert.equal(response.body.completed, false);
+  assert.equal(response.body.date, "15/10/2026");
+  assert.equal(response.body.completionDate, null);
+});
+
+test("PATCH /tasks/:id returns 400 when title is missing", async () => {
+  const response = await request(app).patch("/tasks/1").send({});
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, { error: "Title is required" });
+});
+
+test("PATCH /tasks/:id returns 404 for non-existent task", async () => {
+  const response = await request(app)
+    .patch("/tasks/999")
+    .send({ title: "Título atualizado" });
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, { error: "Task not found" });
+});
