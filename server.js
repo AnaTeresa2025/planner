@@ -36,6 +36,8 @@ const tasks = new Map([
     completionDate: null
   }]
 ]);
+let nextTaskId = Math.max(...tasks.keys()) + 1;
+app.locals.tasks = tasks;
 
 // GET /tasks - "endpoint" que recupera todas as tarefas.
 app.get("/tasks", (req, res) => {
@@ -74,6 +76,19 @@ app.delete("/tasks/:id", (req, res) => {
   res.status(200).end();
 });
 
+app.post("/tasks/:id/reopen", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+
+  if (!task) {
+    return res.status(404).json({ error: "Task not found" });
+  }
+
+  task.completed = false;
+  task.completionDate = null;
+  res.json(task);
+});
+
 app.post("/tasks", (req, res) => {
   const { title, date } = req.body;
 
@@ -81,7 +96,7 @@ app.post("/tasks", (req, res) => {
     return res.status(400).json({ error: "Title and date are required" });
   }
 
-  const newId = tasks.size + 1;  //TODO: Melhorar a geração de IDs para evitar colisões em um cenário real.
+  const newId = nextTaskId++;
   const newTask = {
     id: newId,
     title,
