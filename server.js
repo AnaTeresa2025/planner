@@ -58,6 +58,22 @@ app.get("/tasks/:id", (req, res) => {
   res.json(task);
 });
 
+app.delete("/tasks/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.get(id);
+
+  if (!task) {
+    return res.status(404).json({ error: "Task not found" });
+  }
+
+  if (task.completed) {
+    return res.status(400).json({ error: "Cannot delete a completed task" });
+  }
+
+  tasks.delete(id);
+  res.status(200).end();
+});
+
 app.post("/tasks", (req, res) => {
   const { title, date } = req.body;
 

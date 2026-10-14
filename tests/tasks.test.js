@@ -40,3 +40,31 @@ test("POST /tasks creates a new task", async () => {
   assert.equal(response.body.date, newTask.date);
   assert.equal(response.body.completionDate, null);
 });  
+
+test("DELETE /tasks/:id removes an existing task", async () => {
+  const response = await request(app).delete("/tasks/1");
+
+  assert.equal(response.status, 200);
+
+  const deletedTask = await request(app).get("/tasks/1");
+  assert.equal(deletedTask.status, 404);
+  assert.deepEqual(deletedTask.body, { error: "Task not found" });
+});
+
+test("DELETE /tasks/:id does not remove a completed task", async () => {
+  const response = await request(app).delete("/tasks/2");
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, { error: "Cannot delete a completed task" });
+
+  const completedTask = await request(app).get("/tasks/2");
+  assert.equal(completedTask.status, 200);
+  assert.equal(completedTask.body.completed, true);
+});
+
+test("DELETE /tasks/:id returns 404 for a non-existent task", async () => {
+  const response = await request(app).delete("/tasks/999");
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, { error: "Task not found" });
+});
