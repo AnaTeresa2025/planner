@@ -187,6 +187,31 @@ test("DELETE /tasks/:id returns 404 for a non-existent task", async () => {
   assert.deepEqual(response.body, { error: "Task not found" });
 });
 
+test("DELETE /tasks/completed removes completed tasks and preserves pending tasks", async () => {
+  const completedTask = await createTask("Tarefa concluída para limpeza");
+  const anotherCompletedTask = await createTask("Outra tarefa concluída para limpeza");
+  const pendingTask = await createTask("Tarefa pendente preservada pela limpeza");
+  markTaskCompleted(completedTask);
+  markTaskCompleted(anotherCompletedTask);
+
+  const completedBefore = await request(app).get("/tasks?status=concluida");
+  const response = await request(app).delete("/tasks/completed");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { removedCount: completedBefore.body.length });
+
+  const completedAfter = await request(app).get("/tasks?status=concluida");
+  assert.deepEqual(completedAfter.body, []);
+
+  const pendingAfter = await request(app).get(`/tasks/${pendingTask.id}`);
+  assert.equal(pendingAfter.status, 200);
+  assert.equal(pendingAfter.body.completed, false);
+
+  const repeatedResponse = await request(app).delete("/tasks/completed");
+  assert.equal(repeatedResponse.status, 200);
+  assert.deepEqual(repeatedResponse.body, { removedCount: 0 });
+});
+
 test("PATCH /tasks/:id/reopen reopens a completed task", async () => {
   const task = await createTask();
   markTaskCompleted(task);
