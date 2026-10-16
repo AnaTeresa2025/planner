@@ -80,13 +80,15 @@ app.patch("/tasks/:id", (req, res) => {
 // DELETE /tasks/completed - remove todas as tarefas concluídas.
 app.delete("/tasks/completed", (req, res) => {
   // #swagger.description = 'Remove todas as tarefas concluídas e informa quantas foram removidas.'
-  const completedTasks = db.listaTarefas().filter(task => task.completed);
+  let removedCount = 0;
 
-  for (const task of completedTasks) {
-    db.removeTarefa(task.id);
+  for (const task of db.listaTarefas()) {
+    if (task.completed && db.removeTarefa(task.id)) {
+      removedCount++;
+    }
   }
 
-  res.json({ removedCount: completedTasks.length });
+  res.json({ removedCount });
 });
 
 // DELETE /tasks/:id - "endpoint" que remove uma tarefa pendente.
